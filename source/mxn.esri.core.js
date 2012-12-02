@@ -1,3 +1,11 @@
+/** Mapstraction provider for the Esri JS API
+* 
+* Author: Andrew Turner (@ajturner)
+* Date: December 1, 2012
+* 
+* http://help.arcgis.com/en/webapi/javascript/arcgis/
+*/
+
 mxn.register('esri', {
 
 Mapstraction: {
@@ -6,35 +14,37 @@ Mapstraction: {
 		var me = this, p;
 		dojo.require("esri.map");
 		dojo.require("esri.layers.FeatureLayer");
+		dojo.require("esri.dijit.BasemapGallery");
 
-		var esriMap = new esri.Map(element.id, {
+		var map = new esri.Map(element.id, {
 			wrapAround180: true
 		});
-		//var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer");
-    //esriMap.addLayer(basemap);
-		console.log("esri map made");
-    dojo.connect(esriMap, "onLoad",function() {
-				console.log("esri map loaded");
-				dojo.connect(esriMap, "onClick", function(evt){
-					console.log("map clicked");
-					me.click.fire({location: new mxn.LatLonPoint(evt.mapPoint.y, evt.mapPoint.x)});
+    	dojo.connect(map, "onLoad",function() {
+				dojo.connect(map, "onClick", function(evt){
+					var pt = esri.geometry.webMercatorToGeographic(evt.mapPoint);
+					me.click.fire({location: new mxn.LatLonPoint(pt.y, pt.x)});
 				});
-				dojo.connect(esriMap, "onMouseDown", function(evt){
-					console.log("esrimap mouse down");
-					//esriMap.onPanStart.apply(esriMap.extent, evt.mapPoint);
+				dojo.connect(map, "onMouseDown", function(evt){
+					map.onPanStart.apply(map.extent, evt.mapPoint);
 				});
-				dojo.connect(esriMap, "onMouseDragStart", function(evt){
-					console.log("mouse drag started");
-					//esriMap.onPanStart.apply(esriMap.extent, evt.mapPoint);
-				})
-				dojo.connect(esriMap, "onMouseDragEnd", function(evt){
-					console.log("mouse drag ended");
-					//esriMap.centerAt(evt.mapPoint);
+				dojo.connect(map, "onMouseDragStart", function(evt){
+					map.onPanStart.apply(map.extent, evt.mapPoint);
+				});
+				dojo.connect(map, "onMouseDragEnd", function(evt){
+					map.centerAt(evt.mapPoint);
 					me.endPan.fire();
-				})
-        ////var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer");
-        ////map.addLayer(basemap);
-    });
+				});
+				dojo.connect(map.graphics, "onClick", function(evt) {
+					// FIXME: esri - need to over-ride the Marker.setInfoBubble method to set the graphics content
+					var g = evt.graphic;
+					map.infoWindow.setContent(g.getContent());
+					map.infoWindow.setTitle(g.getTitle());
+					map.infoWindow.show(evt.screenPoint,map.getInfoWindowAnchor(evt.screenPoint));
+		        });
+
+	        // var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer");
+    	    // map.addLayer(basemap);
+	    });
 
 
 		// map.addEventListener('moveend', function(){
@@ -57,17 +67,19 @@ Mapstraction: {
 		
 		this.layers = {};
 		this.features = [];
-		this.maps[api] = esriMap;
+		this.maps[api] = map;
 		this.setMapType();
 		//this.currentMapType = mxn.Mapstraction.SATELLITE;
 		this.loaded[api] = true;
-		for(p in this.options){
-			console.log( p + ": " + this.options[p]);
-		}
+		// for(p in this.options){
+		// 	console.log( p + ": " + this.options[p]);
+		// }
 
 	},
 	
 	applyOptions: function(){
+		// FIXME: esri - 'applyOptions not implemented' (ajturner)
+
 		if (this.options.enableScrollWheelZoom) {
 			// this.maps[this.api].enableScrollWheelZoom();
 		} else {
@@ -104,7 +116,7 @@ Mapstraction: {
 	},
 
 	addLargeControls: function() {
-		throw 'Not implemented';
+		this.addControls({zoom: true, map_type: true});
 	},
 
 	addMapTypeControls: function() {
@@ -114,7 +126,10 @@ Mapstraction: {
 	setCenterAndZoom: function(point, zoom) { 
 		var map = this.maps[this.api];
 		var pt = point.toProprietary(this.api);
-		map.centerAndZoom(pt, zoom); 
+		// FIXME: if this is called too soon on map loading then the extent is null.
+		if(map.extent !== null) {
+			map.centerAndZoom(pt, zoom);
+		}
 	},
 	
 	addMarker: function(marker, old) {
@@ -125,12 +140,13 @@ Mapstraction: {
 	},
 
 	removeMarker: function(marker) {
+		throw 'removeMarkers not implemented';
 		// var map = this.maps[this.api];
 		// map.removeLayer(marker.proprietary_marker);
 	},
 	
 	declutterMarkers: function(opts) {
-		throw 'Not implemented';
+		throw 'declutterMarkers not implemented';
 	},
 
 	addPolyline: function(polyline, old) {
@@ -143,6 +159,7 @@ Mapstraction: {
 	},
 
 	removePolyline: function(polyline) {
+		throw 'removePolyline not implemented';
 		// var map = this.maps[this.api];
 		// map.removeLayer(polyline.proprietary_polyline);
 	},
@@ -170,16 +187,11 @@ Mapstraction: {
 	},
 
 	getZoomLevelForBoundingBox: function(bbox) {
-		//var map = this.maps[this.api];
-		//var bounds = new L.LatLngBounds(
-			//bbox.getSouthWest().toProprietary(this.api),
-			//bbox.getNorthEast().toProprietary(this.api));
-		//return map.getBoundsZoom(bounds);
+		throw "getZoomLevelForBoundingBox not implemented."
 	},
 
 	setMapType: function(type) {
 		var map = this.maps[this.api], baseMapLayer, baseMapUrl, i;
-		console.log("esriMap: " + map);
 		if (! map){
 			return;
 		}
@@ -190,28 +202,21 @@ Mapstraction: {
 				break;
 			}
 		}
-		
+
 		if (baseMapLayer){
 			map.removeLayer(baseMapLayer);
 		}
-		// map.removeAllLayers();
+
 		switch(type) {
 			case mxn.Mapstraction.ROAD:
-                //dojo.require("esri.layers.osm"); // this can cause a race condition
-                //var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer");
-                //map.addLayer(basemap,0);
-								map.addLayer(new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer"),0);
+				map.addLayer(new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer"),0);
                 this.currentMapType = mxn.Mapstraction.ROAD;
                 break;
             case mxn.Mapstraction.SATELLITE:
-                //var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer");
-                //map.addLayer(basemap,0);
-								map.addLayer(new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"),0);
+				map.addLayer(new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"),0);
                 this.currentMapType = mxn.Mapstraction.SATELLITE;
                 break;
             case mxn.Mapstraction.HYBRID:
-                //var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer");
-                //map.addLayer(basemap);
                 map.addLayer(new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer"),0);
                 break;
             default:
@@ -238,40 +243,31 @@ Mapstraction: {
 	},
 
 	addImageOverlay: function(id, src, opacity, west, south, east, north) {
-		throw 'Not implemented';
+		throw 'addImageOverlay not implemented';
 	},
 
 	setImagePosition: function(id, oContext) {
-		throw 'Not implemented';
+		throw 'setImagePosition not implemented';
 	},
 	
 	addOverlay: function(url, autoCenterAndZoom) {
-		throw 'Not implemented';
+		throw 'addOverlay not implemented';
 	},
 
 	addTileLayer: function(tile_url, options) {
-		// var layerName;
-		// if (options && options.name) {
-		// 	layerName = options.name;
-		// 	delete options.name;
-		// } else {
-		// 	layerName = 'Tiles';
-		// }
-		// this.layers[layerName] = new L.TileLayer(tile_url, options || {});
-		// var map = this.maps[this.api];
-		// map.addLayer(this.layers[layerName]);
+		throw "addTileLayer not implemented."
 	},
 
 	toggleTileLayer: function(tile_url) {
-		throw 'Not implemented';
+		throw 'toggleTileLayer not implemented';
 	},
 
 	getPixelRatio: function() {
-		throw 'Not implemented';
+		throw 'getPixelRatio not implemented';
 	},
 	
 	mousePosition: function(element) {
-		throw 'Not implemented';
+		throw 'mousePosition not implemented';
 	},
 
 	openBubble: function(point, content) {
@@ -302,7 +298,8 @@ Marker: {
 	
 	toProprietary: function() {
 		var me = this;
-        var thisIcon = new esri.symbol.PictureMarkerSymbol(this.iconUrl,25,25);
+		var iconUrl = (this.iconUrl) ? this.iconUrl : "http://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png";
+        var thisIcon = new esri.symbol.PictureMarkerSymbol(iconUrl,25,25);
 
 		if (me.iconSize) {
             thisIcon.setWidth(me.iconSize[0]);
@@ -310,7 +307,12 @@ Marker: {
 		}
 		if (me.iconAnchor) {
             thisIcon.setOffset(me.iconAnchor[0], me.iconAnchor[1]);
+		} else  {
+			thisIcon.setOffset([0,16])
 		}
+
+
+		// FIXME: esri - add support for iconShadowUrl and iconShadowSize (ajturner)
 		// if (me.iconShadowUrl) {
 		// 	thisIcon = thisIcon.extend({
 		// 		shadowUrl: me.iconShadowUrl
@@ -325,16 +327,23 @@ Marker: {
         var marker = new esri.Graphic(this.location.toProprietary(this.api),thisIcon);
 		return marker;
 	},
-
 	openBubble: function() {
 		var pin = this.proprietary_marker;
+		var map = this.mapstraction.maps[this.api];
+		
+		if(this.labelText) {
+	        map.infoWindow.setTitle(this.labelText)
+		}
+
 		if (this.infoBubble) {
-			map.infoWindow.show();
+			map.infoWindow.setContent(this.infoBubble);			
+			map.infoWindow.show(pin.geometry,map.getInfoWindowAnchor(pin.geometry));
 		}
 	},
 	
 	closeBubble: function() {
 		var pin = this.proprietary_marker;
+		var map = this.mapstraction.maps[this.api];
 		map.infoWindow.hide();
 
 	},
@@ -359,7 +368,7 @@ Marker: {
 	},
 
 	update: function() {
-		throw 'Not implemented';
+		throw 'Marker.update not implemented';
 	}
 	
 },
@@ -398,11 +407,7 @@ Polyline: {
 	},
 	
 	isHidden: function() {
-		// if (this.map.hasLayer(this.proprietary_polyline)) {
-		// 	return false;
-		// } else {
-		// 	return true;
-		// }
+		throw 'Polyline.isHidden not implemented';
 	}
 }
 
